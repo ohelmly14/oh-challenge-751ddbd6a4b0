@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>30-Day Challenge</title>
+<style>
+:root{--bg:#f6f4ff;--card:#fff;--ink:#241f3d;--mute:#7a7596;--a:#6c4cf1;--b:#14b8a6;--line:#e6e2f5}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:560px;margin:0 auto;padding:18px}
+h1{font-size:24px;margin:6px 0 2px}h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--mute);font-size:14px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:#fff;color:var(--ink)}
+button{border:0;border-radius:10px;padding:12px 16px;font-size:16px;font-weight:600;cursor:pointer;background:var(--a);color:#fff}
+button.sec{background:#ece8ff;color:var(--a)}button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}
+.cups{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.cup{width:44px;height:52px;border-radius:6px 6px 12px 12px;border:2px solid var(--b);background:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.cup.on{background:var(--b)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day{aspect-ratio:1;border-radius:10px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mute);cursor:pointer}
+.day.done{background:var(--a);color:#fff;border-color:var(--a)}.day.today{outline:2px solid var(--b)}.day.future{opacity:.35;cursor:default}
+.big{font-size:40px;font-weight:800}.tot{display:flex;gap:10px}.tot>div{flex:1;text-align:center;padding:14px;border-radius:14px;background:#f1eeff}
+.tot .win{background:#d9f7f2}.small{font-size:13px;color:var(--mute)}
+textarea{width:100%;height:70px;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:8px}
+.msg{font-size:14px;color:var(--b);margin-top:8px;min-height:18px}
+</style></head><body><div class="wrap" id="app"></div>
+<script>
+const KEY='challenge30';
+let S=JSON.parse(localStorage.getItem(KEY)||'null');
+const $=id=>document.getElementById(id), app=$('app');
+const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
+const iso=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+const addDays=(s,n)=>{const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return iso(d)};
+const pts=e=>e?({0:0,30:1,45:3,60:5}[e.w]||0)+Math.min(e.c,5):0;
+const pretty=s=>new Date(s+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+let sel=null,msg='';
+function setup(){
+  app.innerHTML=`<h1>30-Day Challenge</h1><div class="sub">Workouts + water. Scores stay secret until the end.</div>
+  <div class="card"><label>Your name</label><input id="me" placeholder="e.g. Olivia">
+  <label>Your partner's name</label><input id="pt" placeholder="e.g. Mom">
+  <label>First day</label><input id="st" type="date" value="${iso(new Date())}">
+  <div style="margin-top:14px"><button id="go" style="width:100%">Start the challenge</button></div></div>
+  <div class="card small"><b>How points work (max 10/day)</b><br>Workout: 60 min = 5, 45 min = 3, 30 min = 1<br>Water: 1 point per cup, up to 5</div>`;
+  $('go').onclick=()=>{const me=$('me').value.trim(),pt=$('pt').value.trim();if(!me||!pt||!$('st').value)return alert('Please fill everything in.');
+    S={me,pt,start:$('st').value,log:{},partner:null};save();sel=iso(new Date());render()};
+}
+function render(){
+  if(!S)return setup();
+  const end=addDays(S.start,29),today=iso(new Date());
+  if(!sel||sel<S.start||sel>end)sel=today<S.start?S.start:(today>end?end:today);
+  const e=S.log[sel]||{w:0,c:0};
+  let days='';for(let i=0;i<30;i++){const d=addDays(S.start,i);days+=`<div class="day ${S.log[d]?'done':''} ${d===today?'today':''} ${d>today?'future':''}" data-d="${d}">${i+1}</div>`}
+  const logged=Object.keys(S.log).length,over=today>end;
+  app.innerHTML=`<h1>${S.me}'s Challenge</h1><div class="sub">${pretty(S.start)} to ${pretty(end)} · ${logged} of 30 days logged</div>
+  <div class="card"><h2>Log for ${pretty(sel)}</h2>
+  <label>Workout</label><select id="w">${[[0,'No workout'],[30,'30 minutes'],[45,'45 minutes'],[60,'1 hour or more']].map(([v,t])=>`<option value="${v}" ${e.w==v?'selected':''}>${t}</option>`).join('')}</select>
+  <label>Cups of water (tap to fill)</label><div class="cups">${[1,2,3,4,5,6,7,8].map(n=>`<div class="cup ${n<=e.c?'on':''}" data-c="${n}">${n}</div>`).join('')}</div>
+  <div class="small" style="margin-top:6px">Only the first 5 cups count, but keep sipping.</div>
+  <div style="margin-top:14px"><button id="sv" style="width:100%">Save this day</button></div><div class="msg">${msg}</div></div>
+  <div class="card"><h2>Your days</h2><div class="grid">${days}</div><div class="small" style="margin-top:8px">Purple = logged. Tap a day to add or edit it. Future days unlock as they arrive.</div></div>
+  <div id="rv"></div>
+  <div class="card"><button class="sec" id="rs">Start over</button></div>`;
+  let cups=e.c;
+  document.querySelectorAll('.cup').forEach(c=>c.onclick=()=>{const n=+c.dataset.c;cups=(cups===n)?n-1:n;document.querySelectorAll('.cup').forEach(x=>x.classList.toggle('on',+x.dataset.c<=cups))});
+  document.querySelectorAll('.day').forEach(d=>d.onclick=()=>{if(d.dataset.d>today)return;sel=d.dataset.d;msg='';render()});
+  $('sv').onclick=()=>{S.log[sel]={w:+$('w').value,c:cups};save();msg='Saved. Nice work!';render()};
+  $('rs').onclick=()=>{if(confirm('Delete all your data and start over?')){localStorage.removeItem(KEY);S=null;render()}};
+  reveal(over);
+}
+function code(){return btoa(unescape(encodeURIComponent(JSON.stringify({n:S.me,s:S.start,l:S.log}))))}
+function reveal(over){
+  const el=$('rv'),days=[...Array(30)].map((_,i)=>addDays(S.start,i));
+  if(!S.revealed&&!over){
+    const left=Math.ceil((new Date(addDays(S.start,29)+'T23:59:59')-new Date())/864e5);
+    el.innerHTML=`<div class="card"><h2>The big reveal</h2><div class="small">Scores are locked. Scores unlock on ${pretty(addDays(S.start,30))} (${left} day${left==1?'':'s'} to go).</div><div style="margin-top:10px"><button class="sec" id="pk">Reveal early</button></div></div>`;
+    $('pk').onclick=()=>{if(confirm('Reveal scores now? The surprise will be gone!')){S.revealed=true;save();render()}};return}
+  const mine=days.map(d=>pts(S.log[d])),myT=mine.reduce((a,b)=>a+b,0);
+  let p=S.partner,pT=null,pp=null;if(p){pp=days.map((_,i)=>pts(p.l[addDays(p.s,i)]));pT=pp.reduce((a,b)=>a+b,0)}
+  let html=`<div class="card"><h2>Share your code</h2><div class="small">Send this to ${S.pt}, and paste hers below.</div><textarea readonly onclick="this.select()">${code()}</textarea>
+  <label>${S.pt}'s code</label><textarea id="pc" placeholder="Paste her code here"></textarea><div style="margin-top:8px"><button id="ap" class="sec">Load her scores</button></div></div>`;
+  html+=`<div class="card"><h2>The results</h2><div class="tot"><div class="${pT!==null&&myT>=pT?'win':''}"><div class="small">${S.me}</div><div class="big">${myT}</div><div class="small">of 300</div></div>`+
+  (pT!==null?`<div class="${pT>=myT?'win':''}"><div class="small">${p.n||S.pt}</div><div class="big">${pT}</div><div class="small">of 300</div></div>`:'')+`</div>`;
+  if(pT!==null)html+=`<p style="text-align:center;font-weight:700">${myT===pT?"It's a tie!":(myT>pT?S.me:(p.n||S.pt))+' wins!'}</p>`;
+  const W=520,H=130,bw=W/30;let svg=`<svg viewBox="0 0 ${W} ${H+18}" width="100%" style="margin-top:12px">`;
+  days.forEach((d,i)=>{const h1=mine[i]/10*H;const x=i*bw;
+    if(pp){const h2=pp[i]/10*H;svg+=`<rect x="${x+1}" y="${H-h1}" width="${bw/2-1}" height="${h1}" fill="#6c4cf1"/><rect x="${x+bw/2}" y="${H-h2}" width="${bw/2-1}" height="${h2}" fill="#14b8a6"/>`}
+    else svg+=`<rect x="${x+2}" y="${H-h1}" width="${bw-4}" height="${h1}" fill="#6c4cf1"/>`;
+    if(i%5==0||i==29)svg+=`<text x="${x+bw/2}" y="${H+14}" font-size="11" text-anchor="middle" fill="#7a7596">${i+1}</text>`});
+  if(p&&p.s!==S.start)html+=`<div class="small" style="margin-bottom:8px">Note: ${p.n||S.pt} started on a different day, so day 1 is compared with day 1.</div>`;
+  html+=svg+`</svg><div class="small">Daily points. Purple is ${S.me}${pp?', teal is '+(p.n||S.pt):''}.</div>`+(over?'':`<div style="margin-top:10px"><button class="sec" id="hd">Hide scores again</button></div>`)+`</div>`;
+  el.innerHTML=html;
+  if($('hd'))$('hd').onclick=()=>{S.revealed=false;save();render()};
+  $('ap').onclick=()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('pc').value.trim()))));if(!o||!/^\d{4}-\d{2}-\d{2}$/.test(o.s)||typeof o.l!=='object'||!o.l)throw 0;S.partner=o;save();render()}catch(x){alert('That code did not work. Copy the whole thing.')}};
+}
+render();
+</script></body></html>
