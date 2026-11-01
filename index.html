@@ -52,19 +52,23 @@ function render(){
   const e=S.log[sel]||{w:0,c:0};
   let days='';for(let i=0;i<30;i++){const d=addDays(S.start,i);days+=`<div class="day ${S.log[d]?'done':''} ${d===today?'today':''} ${d>today?'future':''}" data-d="${d}">${i+1}</div>`}
   const logged=Object.keys(S.log).length,over=today>end;
-  app.innerHTML=`<h1>${S.me}'s Challenge</h1><div class="sub">${pretty(S.start)} to ${pretty(end)} · ${logged} of 30 days logged</div>
+  app.innerHTML=`<h1>${S.me}'s Challenge</h1><div class="sub">${pretty(S.start)} to ${pretty(end)} · <span id="lg">${logged}</span> of 30 days logged</div>
   <div class="card"><h2>Log for ${pretty(sel)}</h2>
   <label>Workout</label><select id="w">${[[0,'No workout'],[30,'30 minutes'],[45,'45 minutes'],[60,'1 hour or more']].map(([v,t])=>`<option value="${v}" ${e.w==v?'selected':''}>${t}</option>`).join('')}</select>
   <label>Cups of water (tap to fill)</label><div class="cups">${[1,2,3,4,5,6,7,8].map(n=>`<div class="cup ${n<=e.c?'on':''}" data-c="${n}">${n}</div>`).join('')}</div>
   <div class="small" style="margin-top:6px">Only the first 5 cups count, but keep sipping.</div>
-  <div style="margin-top:14px"><button id="sv" style="width:100%">Save this day</button></div><div class="msg">${msg}</div></div>
+  <div class="msg" id="ms" style="margin-top:12px">${msg||'Saves automatically as you go.'}</div></div>
   <div class="card"><h2>Your days</h2><div class="grid">${days}</div><div class="small" style="margin-top:8px">Purple = logged. Tap a day to add or edit it. Future days unlock as they arrive.</div></div>
   <div id="rv"></div>
   <div class="card"><button class="sec" id="rs">Start over</button></div>`;
   let cups=e.c;
-  document.querySelectorAll('.cup').forEach(c=>c.onclick=()=>{const n=+c.dataset.c;cups=(cups===n)?n-1:n;document.querySelectorAll('.cup').forEach(x=>x.classList.toggle('on',+x.dataset.c<=cups))});
+  document.querySelectorAll('.cup').forEach(c=>c.onclick=()=>{const n=+c.dataset.c;cups=(cups===n)?n-1:n;document.querySelectorAll('.cup').forEach(x=>x.classList.toggle('on',+x.dataset.c<=cups));persist()});
   document.querySelectorAll('.day').forEach(d=>d.onclick=()=>{if(d.dataset.d>today)return;sel=d.dataset.d;msg='';render()});
-  $('sv').onclick=()=>{S.log[sel]={w:+$('w').value,c:cups};save();msg='Saved. Nice work!';render()};
+  function persist(){const w=+$('w').value;if(w===0&&cups===0)delete S.log[sel];else S.log[sel]={w,c:cups};save();
+    const dc=document.querySelector('.day[data-d="'+sel+'"]');if(dc)dc.classList.toggle('done',!!S.log[sel]);
+    $('lg').textContent=Object.keys(S.log).length;$('ms').textContent='Saved ✓ '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+'. Come back anytime to add more.';
+    if(S.revealed||over)reveal(over)}
+  $('w').onchange=persist;
   $('rs').onclick=()=>{if(confirm('Delete all your data and start over?')){localStorage.removeItem(KEY);S=null;render()}};
   reveal(over);
 }
